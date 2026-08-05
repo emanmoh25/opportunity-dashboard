@@ -1,12 +1,12 @@
 # Opportunity Dashboard
 
-A REST API that aggregates internships, fellowships, and other educational opportunities in one place, with filtering to help students quickly find programs they're actually eligible for.
+A REST API that aggregates scholarships, fellowships, and pipeline programs, spanning high school through college, and matches them to individual students based on GPA, grade level, and interests.
 
 Built with Spring Boot and PostgreSQL.
 
 ## Why
 
-Opportunity info for students is scattered across mailing lists, Instagram posts, and word of mouth, and most of it doesn't say clearly who can actually apply. This project centralizes opportunities in a queryable database so students can filter by grade level and type instead of digging through a dozen sources.
+The programs that change a student's trajectory the most, Thrive Scholars, the Gates Scholarship, QuestBridge, sophomore-specific tech fellowships, are usually the hardest to find. They're scattered across mailing lists, Instagram posts, and word of mouth, and most students don't hear about them until the deadline has passed. This isn't another internship board duplicating what's already on LinkedIn. It centralizes access and pipeline opportunities in a queryable database, then scores and ranks them for each student so the best-fit programs surface first, instead of a student having to guess whether they even qualify.
 
 ## Tech Stack
 
@@ -17,9 +17,11 @@ Opportunity info for students is scattered across mailing lists, Instagram posts
 
 ## Features
 
-- Full CRUD for opportunities (create, read, update, delete)
+- Full CRUD for opportunities and students
 - Filter opportunities by grade level, type, or both
 - Each opportunity tracks name, type, deadline, eligibility criteria, minimum GPA, year, grade level, and application link
+- **Weighted matching algorithm**: scores every opportunity for a given student (0-100) based on GPA fit, grade level fit, and interest fit, then returns them ranked best-match first. GPA requirements are treated holistically, a student below the stated minimum still shows up, just scored lower, since many programs review holistically rather than enforcing a hard cutoff.
+- Every match includes plain-language reasons behind its score, so results aren't a black box
 
 ## Getting Started
 
@@ -66,6 +68,12 @@ The API will be available at `http://localhost:8080`.
 | PUT | `/api/opportunities/{id}` | Update an existing opportunity |
 | DELETE | `/api/opportunities/{id}` | Delete an opportunity |
 | GET | `/api/opportunities/filter?gradeLevel=&type=` | Filter opportunities by grade level and/or type |
+| GET | `/api/students` | Get all students |
+| GET | `/api/students/{id}` | Get a single student by ID |
+| POST | `/api/students` | Create a new student |
+| PUT | `/api/students/{id}` | Update an existing student |
+| DELETE | `/api/students/{id}` | Delete a student |
+| GET | `/api/students/{id}/matches` | Get every opportunity scored and ranked for this student, best match first |
 
 ### Example: Create an opportunity
 
@@ -73,15 +81,34 @@ The API will be available at `http://localhost:8080`.
 curl -X POST http://localhost:8080/api/opportunities \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "ColorStack Summer Fellowship",
-    "type": "Fellowship",
-    "deadline": "2026-11-01",
-    "eligibility": "Underrepresented CS students",
-    "minimumGpa": 3.0,
-    "year": "Sophomore",
-    "gradeLevel": "College Sophomore",
-    "link": "https://colorstack.org"
+    "name": "The Gates Scholarship",
+    "type": "Scholarship",
+    "deadline": "2026-09-15",
+    "eligibility": "High school senior, Pell-eligible, one of several specified minority backgrounds",
+    "minimumGpa": 3.3,
+    "year": "Senior",
+    "gradeLevel": "High School Senior",
+    "link": "https://www.thegatesscholarship.org"
   }'
+```
+
+### Example: Create a student
+
+```bash
+curl -X POST http://localhost:8080/api/students \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jordan Lee",
+    "gpa": 3.4,
+    "gradeLevel": "High School Senior",
+    "interests": ["Scholarship", "Fellowship"]
+  }'
+```
+
+### Example: Get ranked matches for a student
+
+```bash
+curl "http://localhost:8080/api/students/1/matches"
 ```
 
 ### Example: Filter by grade level
@@ -102,15 +129,31 @@ curl "http://localhost:8080/api/opportunities/filter?gradeLevel=College%20Sophom
 | eligibility | String | Free-text eligibility description |
 | minimumGpa | Double | Minimum GPA requirement, if any |
 | year | String | Target class year |
-| gradeLevel | String | e.g. Middle School, High School, College Sophomore |
+| gradeLevel | String | e.g. Middle School, High School Senior, College Sophomore |
 | link | String | Application link |
+
+**Student**
+| Field | Type | Description |
+|---|---|---|
+| id | Long | Auto-generated primary key |
+| name | String | Student name |
+| gpa | Double | Student's GPA |
+| gradeLevel | String | e.g. High School Senior, College Sophomore |
+| interests | List\<String\> | Opportunity types the student is interested in, e.g. Scholarship, Fellowship |
+
+## How Matching Works
+
+Each opportunity is scored out of 100 for a given student:
+
+- **GPA fit (35 pts)**: full credit if there's no stated minimum or the student meets it, partial credit if they're close (holistic review), reduced but non-zero credit if they're further below
+- **Grade level fit (35 pts)**: full credit for an exact match or an opportunity open to all levels, reduced credit for a mismatch
+- **Interest fit (30 pts)**: full credit if the opportunity's type matches one of the student's stated interests, neutral credit if the student hasn't specified interests, zero if there's a clear mismatch
+
+Results are sorted highest score first, and every match includes a list of plain-language reasons behind its score.
 
 ## Roadmap
 
-- [ ] `Student` entity to represent user profiles (GPA, class year, interests)
-- [ ] Eligibility matching algorithm to recommend opportunities per student
-- [ ] Unit and integration tests
-- [ ] Expanded seed dataset
+- [ ] Expanded seed dataset (scholarships, fellowships, and pipeline programs across grade levels)
 - [ ] Deployment (Railway or Render)
 
 ## Author
