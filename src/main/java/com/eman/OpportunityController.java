@@ -36,6 +36,7 @@ public class OpportunityController {
             opportunity.setEligibility(updatedOpportunity.getEligibility());
             opportunity.setMinimumGpa(updatedOpportunity.getMinimumGpa());
             opportunity.setYear(updatedOpportunity.getYear());
+            opportunity.setGradeLevel(updatedOpportunity.getGradeLevel());
             opportunity.setLink(updatedOpportunity.getLink());
             return opportunityRepository.save(opportunity);
         }).orElse(null);
